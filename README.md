@@ -1,6 +1,8 @@
 **Sports Betting Project**
+-----------------------------------------
 
 **Stage 1: Arbitrage Bets**
+-
 - Data Scraping
 - Algo Building
 - API calls
