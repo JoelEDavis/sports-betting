@@ -3,13 +3,20 @@
 
 **Stage 1: Arbitrage Bets**
 -
-- Data Scraping
-- Algo Building
+- Data scraping
+- Algo building
 - API calls
-- Web-page inteaction
+- Web-page interaction
+- Deployment
 - Automation
+- Analysis
 
 **Stage 2: Value Bets**
 - 
+- Algo implementation
+- Rotating IPs
 
 **Stage 3: Alternate Strategies**
+-
+- Mean reversion
+- Speed or accuracy
