@@ -1,11 +1,12 @@
 import requests
 import os
 import pandas as pd
+import json
 
 def import_data():
     API_KEY = 'cfbd0505443704067b3f02181ccffcde'
     SPORT = 'soccer_epl'
-    REGIONS = 'uk'
+    REGIONS = 'eu,uk'
     MARKETS = 'h2h'
     ODDS_FORMAT = 'decimal'
     DATE_FORMAT = 'iso'
@@ -62,9 +63,10 @@ def visualise(odds):  # Pass odds as an argument
 
     columns = ['Event ID', 'Sport Key', 'Sport Title', 'Commence Time', 'Home Team', 'Away Team', 
             'Bookmaker Key', 'Bookmaker Title', 'Team', 'Price', 'Point Spread']
+    
     df = pd.DataFrame(events, columns=columns)
 
-    df.to_csv('PL_Odds.csv', index=False)  # Remove df argument here
+    df.to_csv('PL_Odds.csv', index=False)
     
 # Now call the functions
 odds_data = import_data()

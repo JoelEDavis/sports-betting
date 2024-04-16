@@ -1,4 +1,7 @@
 import json
+import requests
+import csv
+
 
 with open('scores.json') as f:
     jsondata = json.load(f)
