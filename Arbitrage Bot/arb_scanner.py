@@ -41,16 +41,42 @@ class OddsDataProcessor:
                         }
                         rows_list.append(row)
         return pd.DataFrame(rows_list)
+    
+class ValueCalculator:
+    @staticmethod
+    def calculate_value(df, stake, sharp_bookmakers):
+        # Filter DataFrame to include only sharp bookmakers
+        df_sharp = df[df['bookmaker_title'].isin(sharp_bookmakers)]
+        
+        # Find maximum odds for each outcome from sharp bookmakers
+        idx_sharp_max = df_sharp.groupby(['game_id', 'outcome_name'])['outcome_price'].idxmax()
+        df_sharp_max = df_sharp.loc[idx_sharp_max].copy()
+        
+        # Find maximum odds for each outcome from all bookmakers
+        idx_max = df.groupby(['game_id', 'outcome_name'])['outcome_price'].idxmax()
+        df_max = df.loc[idx_max].copy()
+        
+        # Merge the two DataFrames on game_id and outcome_name
+        df_merged = pd.merge(df_sharp_max, df_max, on=['game_id', 'outcome_name'], suffixes=('_sharp', '_all'))
+        
+        # Calculate the difference in odds between sharp and all bookmakers
+        df_merged['odds_difference'] = df_merged['outcome_price_sharp'] - df_merged['outcome_price_all']
+        
+        # Filter for positive differences indicating higher odds from sharp bookmakers
+        df_value = df_merged[df_merged['odds_difference'] > 0]
+        
+        return df_value
+
 
 class ArbitrageCalculator:
     @staticmethod
     def calculate_arbitrage(df, stake):
-        df = df[~df['bookmaker_key'].isin(['betfair_ex_uk', 'betfair_ex_eu', 'matchbook'])]
+        df = df[~df['bookmaker_key'].isin(['betfair_ex_uk', 'betfair_ex_eu', 'matchbook', 'betfair_ex_au'])]
         idx = df.groupby(['game_id', 'outcome_name'])['outcome_price'].idxmax()
         df_arb = df.loc[idx].copy()
         df_arb['impl_prob'] = 1 / df_arb['outcome_price']
         df_arb['sum_impl_prob'] = df_arb.groupby('game_id')['impl_prob'].transform('sum')
-        df_arb = df_arb[df_arb['sum_impl_prob'] < 0.99]
+        # df_arb = df_arb[df_arb['sum_impl_prob'] < 0.99]
         df_arb['stake'] = stake / df_arb['sum_impl_prob'] * df_arb['impl_prob']
         df_arb['ror'] = (1 - df_arb['sum_impl_prob'])
         df_arb['profit'] = stake * df_arb['ror']
@@ -58,7 +84,7 @@ class ArbitrageCalculator:
 
 def main():
     api_key = 'cfbd0505443704067b3f02181ccffcde'
-    region = 'eu,uk'
+    region = 'uk,eu'
     market = 'h2h'
     sport_key = 'soccer_epl'
     stake = 1000
@@ -68,8 +94,13 @@ def main():
 
     df = OddsDataProcessor.process_data(odds_data)
 
-    df_arb = ArbitrageCalculator.calculate_arbitrage(df, stake)
+    df.to_csv("Full Market View.csv")
 
+    sharp_bookmakers = ['Pinnacle']
+    df_value = ValueCalculator.calculate_value(df, stake, sharp_bookmakers)
+    df_value.to_csv("Value_Against_Sharp.csv")
+
+    df_arb = ArbitrageCalculator.calculate_arbitrage(df, stake)
     df_arb.to_csv("Arb_Opportunities.csv")
 
 if __name__ == "__main__":
