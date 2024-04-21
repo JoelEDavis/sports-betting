@@ -1,8 +1,12 @@
 import pandas as pd
-import requests
 import sys
+import os
+from dotenv import load_dotenv
 sys.path.append(r'C:\Users\Joel\Desktop\SurebetBot')
 from utils import OddsAPI, OddsDataProcessor, ArbitrageCalculator
+
+load_dotenv()
+api_key = os.getenv("KEY")
 
 def main():
     api_key = ''

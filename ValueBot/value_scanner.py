@@ -1,5 +1,10 @@
 import pandas as pd
+import os
 from utils import OddsAPI, OddsDataProcessor, ValueCalculator
+from dotenv import load_dotenv
+
+load_dotenv()
+api_key = os.getenv("KEY")
 
 def main():
     api_key = ''
