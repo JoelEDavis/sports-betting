@@ -5,7 +5,7 @@ sys.path.append(r'C:\Users\Joel\Desktop\SurebetBot')
 from utils import OddsAPI, OddsDataProcessor, ArbitrageCalculator
 
 def main():
-    api_key = '79e584096c47a2c007ea1b5081b24784'
+    api_key = ''
     region = 'uk'
     market = 'h2h'
     sport_keys = [
@@ -43,32 +43,31 @@ def main():
                   'soccer_spl',
                   'soccer_sweden_allsvenskan',
                   'soccer_sweden_superettan',
-                  'soccer_switzerland_superleague',
                   'soccer_turkey_super_league',
                   'soccer_uefa_europa_conference_league',
                   'soccer_uefa_champs_league',
                   'soccer_uefa_europa_league',
                   'soccer_conmebol_copa_libertadores',
-                  'soccer_usa_mls',]
+                  'soccer_usa_mls'
+                  ]
     
     valid_bookmakers = ['sport888',
-                  'betfair_sb_uk',
-                  'betvictor',
-                  'betway',
-                  'boylesports',
-                  'casumo',
-                  'coral',
-                  'grosvenor',
-                  'ladbrokes_uk',
-                  'leovegas',
-                  'livescorebet',
-                  'matchbook',
-                  'mrgreen',
-                  'paddypower',
-                  'skybet',
-                  'unibet_uk',
-                  'virginbet',
-                  'williamhill']
+                        'betfair_sb_uk',
+                        'betvictor',
+                        'betway',
+                        'boylesports',
+                        'casumo',
+                        'coral',
+                        'grosvenor',
+                        'ladbrokes_uk',
+                        'leovegas',
+                        'livescorebet',
+                        'mrgreen',
+                        'paddypower',
+                        'skybet',
+                        'unibet_uk',
+                        'virginbet',
+                        'williamhill']
     
     stake = 1000
 

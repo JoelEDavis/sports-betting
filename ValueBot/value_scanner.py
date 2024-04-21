@@ -2,7 +2,7 @@ import pandas as pd
 from utils import OddsAPI, OddsDataProcessor, ValueCalculator
 
 def main():
-    api_key = '79e584096c47a2c007ea1b5081b24784'
+    api_key = ''
     region = 'uk,eu'
     market = 'h2h'
     sport_keys = [
@@ -60,7 +60,6 @@ def main():
                         'ladbrokes_uk',
                         'leovegas',
                         'livescorebet',
-                        'matchbook',
                         'mrgreen',
                         'paddypower',
                         'skybet',
