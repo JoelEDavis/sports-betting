@@ -34,6 +34,7 @@ class OddsDataProcessor:
                             'bookmaker_key': bookmaker['key'],
                             'bookmaker_title': bookmaker['title'],
                             'bookmaker_last_update': bookmaker['last_update'],
+                            'bookmaker_region': bookmaker['region'],
                             'market_key': market_['key'],
                             'market_last_update': market_['last_update'],
                             'outcome_name': outcome['name'],
