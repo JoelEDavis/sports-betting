@@ -5,7 +5,7 @@ sys.path.append(r'C:\Users\Joel\Desktop\SurebetBot')
 from utils import OddsAPI, OddsDataProcessor, ArbitrageCalculator
 
 def main():
-    api_key = 'cfbd0505443704067b3f02181ccffcde'
+    api_key = '79e584096c47a2c007ea1b5081b24784'
     region = 'uk'
     market = 'h2h'
     sport_keys = [
@@ -50,9 +50,29 @@ def main():
                   'soccer_uefa_europa_league',
                   'soccer_conmebol_copa_libertadores',
                   'soccer_usa_mls',]
+    
+    valid_bookmakers = ['sport888',
+                  'betfair_sb_uk',
+                  'betvictor',
+                  'betway',
+                  'boylesports',
+                  'casumo',
+                  'coral',
+                  'grosvenor',
+                  'ladbrokes_uk',
+                  'leovegas',
+                  'livescorebet',
+                  'matchbook',
+                  'mrgreen',
+                  'paddypower',
+                  'skybet',
+                  'unibet_uk',
+                  'virginbet',
+                  'williamhill']
+    
     stake = 1000
 
-    merged_arbs = []
+    arb_opportunities = []
     
     for sport_key in sport_keys:
         odds_api = OddsAPI(api_key, region, market, sport_key)
@@ -60,11 +80,11 @@ def main():
     
         df = OddsDataProcessor.process_data(odds_data)
     
-        df_arb = ArbitrageCalculator.calculate_arbitrage(df, stake)
-        merged_arbs.append(df_arb)
+        df_arb = ArbitrageCalculator.calculate_arbitrage(df, valid_bookmakers, stake)
+        arb_opportunities.append(df_arb)
 
-    merged_arbs = pd.concat(merged_arbs)
-    merged_arbs.to_csv(f"All Arbitrage Opportunities.csv")
+    arb_opportunities = pd.concat(arb_opportunities)
+    arb_opportunities.to_csv(f"All Arbitrage Opportunities.csv")
 
 if __name__ == "__main__":
     main()

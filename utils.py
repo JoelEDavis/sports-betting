@@ -15,7 +15,8 @@ class OddsAPI:
         print('Remaining requests', odds_response.headers['x-requests-remaining'])
         print('Used requests', odds_response.headers['x-requests-used'])
         return odds_data
-    
+
+
 class OddsDataProcessor:
     @staticmethod
     def process_data(odds_data):
@@ -34,7 +35,6 @@ class OddsDataProcessor:
                             'bookmaker_key': bookmaker['key'],
                             'bookmaker_title': bookmaker['title'],
                             'bookmaker_last_update': bookmaker['last_update'],
-                            'bookmaker_region': bookmaker['region'],
                             'market_key': market_['key'],
                             'market_last_update': market_['last_update'],
                             'outcome_name': outcome['name'],
@@ -43,35 +43,44 @@ class OddsDataProcessor:
                         rows_list.append(row)
         return pd.DataFrame(rows_list)
     
+    
 class ValueCalculator:
     @staticmethod
-    def calculate_value(df, stake, sharp_bookmakers):
+    def calculate_value(df, stake, sharp_bookmakers, valid_bookmakers):
         # Filter DataFrame to include only sharp bookmakers
-        df_sharp = df[df['bookmaker_title'].isin(sharp_bookmakers)]
+        df_sharp = df[df['bookmaker_key'].isin(sharp_bookmakers)]
+        
+        # Calculate the average odds for each outcome from sharp bookmakers
+        avg_sharp_odds = df_sharp.groupby(['game_id', 'outcome_name'])['outcome_price'].mean()
+        avg_sharp_odds = avg_sharp_odds.reset_index().rename(columns={'outcome_price': 'avg_sharp_price'})
         
         # Filter out exchange markets
-        df_non_exchange = df[~df['bookmaker_key'].isin(['betfair_ex_uk', 'betfair_ex_eu', 'matchbook', 'betfair_ex_au'])]
+        df_valid = df[df['bookmaker_key'].isin(valid_bookmakers)]
         
-        # Find maximum odds for each outcome from sharp bookmakers
-        idx_sharp_max = df_sharp.groupby(['game_id', 'outcome_name'])['outcome_price'].idxmax()
-        df_sharp_max = df_sharp.loc[idx_sharp_max].copy()
+        # Find the odds from all bookmakers higher than the average sharp odds
+        df_higher_than_avg = df_valid.merge(avg_sharp_odds, on=['game_id', 'outcome_name'])
+        df_higher_than_avg = df_higher_than_avg[df_higher_than_avg['outcome_price'] > df_higher_than_avg['avg_sharp_price']]
         
-        # Find maximum odds for each outcome from all bookmakers
-        idx_max = df_non_exchange.groupby(['game_id', 'outcome_name'])['outcome_price'].idxmax()
-        df_max = df_non_exchange.loc[idx_max].copy()
+        # Calculate win probability for each outcome
+        df_higher_than_avg['win_probability'] = 1 / df_higher_than_avg['outcome_price']
+        # Calculate loss probability for each outcome
+        df_higher_than_avg['loss_probability'] = 1 - df_higher_than_avg['win_probability']
         
-        # Merge the two DataFrames on game_id and outcome_name
-        df_merged = pd.merge(df_sharp_max, df_max, on=['game_id', 'outcome_name'], suffixes=('_sharp', '_all'))
+        # Calculate EV for each outcome
+        df_higher_than_avg['EV'] = (df_higher_than_avg['win_probability'] * df_higher_than_avg['outcome_price'] * stake) - (df_higher_than_avg['loss_probability'] * stake)
         
-        # Find instances where non-sharp bookmakers offer better odds
-        df_value = df_merged[df_merged['outcome_price_all'] > df_merged['outcome_price_sharp']]
+        # Calculate EV from average sharp odds
+        avg_sharp_odds['win_probability'] = 1 / avg_sharp_odds['avg_sharp_price']
+        avg_sharp_odds['loss_probability'] = 1 - avg_sharp_odds['win_probability']
+        avg_sharp_odds['EV'] = (avg_sharp_odds['win_probability'] * avg_sharp_odds['avg_sharp_price'] * stake) - (avg_sharp_odds['loss_probability'] * stake)
+        
+        return df_higher_than_avg, avg_sharp_odds
 
-        return df_value
     
 class ArbitrageCalculator:
     @staticmethod
-    def calculate_arbitrage(df, stake):
-        df = df[~df['bookmaker_key'].isin(['betfair_ex_uk', 'betfair_ex_eu', 'matchbook', 'betfair_ex_au'])]
+    def calculate_arbitrage(df, valid_bookmakers, stake):
+        df = df[df['bookmaker_key'].isin([valid_bookmakers])]
         idx = df.groupby(['game_id', 'outcome_name'])['outcome_price'].idxmax()
         df_arb = df.loc[idx].copy()
         df_arb['impl_prob'] = 1 / df_arb['outcome_price']
