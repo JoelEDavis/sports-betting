@@ -46,7 +46,7 @@ class OddsDataProcessor:
     
 class ValueCalculator:
     @staticmethod
-    def calculate_value(df, stake, sharp_bookmakers, valid_bookmakers):
+    def calculate_value(df, bankroll, sharp_bookmakers, valid_bookmakers):
         # Filter DataFrame to include only sharp bookmakers
         df_sharp = df[df['bookmaker_key'].isin(sharp_bookmakers)]
         
@@ -61,31 +61,33 @@ class ValueCalculator:
         df_higher_than_avg = df_valid.merge(avg_sharp_odds, on=['game_id', 'outcome_name'])
         df_higher_than_avg = df_higher_than_avg[df_higher_than_avg['outcome_price'] > df_higher_than_avg['avg_sharp_price']]
         
-        # Calculate win probability for each outcome
+        # Calculate win probability based on odds provided and establish the price difference between sharp and soft bookmakers
         df_higher_than_avg['win_probability'] = 1 / df_higher_than_avg['outcome_price']
-        # Calculate loss probability for each outcome
-        df_higher_than_avg['loss_probability'] = 1 - df_higher_than_avg['win_probability']
+        df_higher_than_avg['sharp_probability'] = 1 / df_higher_than_avg['avg_sharp_price']
+        df_higher_than_avg['price_difference'] = df_higher_than_avg['outcome_price'] - df_higher_than_avg['avg_sharp_price']
         
-        # Calculate EV for each outcome
-        df_higher_than_avg['EV'] = (df_higher_than_avg['win_probability'] * df_higher_than_avg['outcome_price'] * stake) - (df_higher_than_avg['loss_probability'] * stake)
+        # Calculate ROI for each outcome
+        df_higher_than_avg['ROI'] = (((df_higher_than_avg['outcome_price'] - 1) * df_higher_than_avg['sharp_probability']) - (1 - df_higher_than_avg['sharp_probability']))
         
-        # Calculate EV from average sharp odds
-        avg_sharp_odds['win_probability'] = 1 / avg_sharp_odds['avg_sharp_price']
-        avg_sharp_odds['loss_probability'] = 1 - avg_sharp_odds['win_probability']
-        avg_sharp_odds['EV'] = (avg_sharp_odds['win_probability'] * avg_sharp_odds['avg_sharp_price'] * stake) - (avg_sharp_odds['loss_probability'] * stake)
-        
-        return df_higher_than_avg, avg_sharp_odds
+        # Calculate bet size using Kelly Criterion
+        df_higher_than_avg['Bankroll%'] = (((df_higher_than_avg['outcome_price'] - 1) * df_higher_than_avg['sharp_probability']) - (1 - df_higher_than_avg['sharp_probability'])) / (df_higher_than_avg['outcome_price'] - 1)
+        df_higher_than_avg['Bet Size'] = bankroll * df_higher_than_avg['Bankroll%']
+        df_higher_than_avg['Bet Size'] = df_higher_than_avg['Bet Size'].apply(lambda x: round(x, -1))
+
+        df_higher_than_avg['EV'] = df_higher_than_avg['Bet Size'] * df_higher_than_avg['ROI%']
+
+        return df_higher_than_avg
 
     
 class ArbitrageCalculator:
     @staticmethod
     def calculate_arbitrage(df, valid_bookmakers, stake):
-        df = df[df['bookmaker_key'].isin([valid_bookmakers])]
+        df = df[df['bookmaker_key'].isin(valid_bookmakers)]
         idx = df.groupby(['game_id', 'outcome_name'])['outcome_price'].idxmax()
         df_arb = df.loc[idx].copy()
         df_arb['impl_prob'] = 1 / df_arb['outcome_price']
         df_arb['sum_impl_prob'] = df_arb.groupby('game_id')['impl_prob'].transform('sum')
-        df_arb = df_arb[df_arb['sum_impl_prob'] < 0.99]
+        df_arb = df_arb[df_arb['sum_impl_prob'] < 1]
         df_arb['stake'] = stake / df_arb['sum_impl_prob'] * df_arb['impl_prob']
         df_arb['ror'] = (1 - df_arb['sum_impl_prob'])
         df_arb['profit'] = stake * df_arb['ror']
