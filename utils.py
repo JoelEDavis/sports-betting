@@ -67,14 +67,15 @@ class ValueCalculator:
         df_higher_than_avg['price_difference'] = df_higher_than_avg['outcome_price'] - df_higher_than_avg['avg_sharp_price']
         
         # Calculate ROI for each outcome
-        df_higher_than_avg['ROI'] = (((df_higher_than_avg['outcome_price'] - 1) * df_higher_than_avg['sharp_probability']) - (1 - df_higher_than_avg['sharp_probability']))
+        df_higher_than_avg['ROI%'] = (((df_higher_than_avg['outcome_price'] - 1) * df_higher_than_avg['sharp_probability']) - (1 - df_higher_than_avg['sharp_probability']))
         
         # Calculate bet size using Kelly Criterion
         df_higher_than_avg['Bankroll%'] = (((df_higher_than_avg['outcome_price'] - 1) * df_higher_than_avg['sharp_probability']) - (1 - df_higher_than_avg['sharp_probability'])) / (df_higher_than_avg['outcome_price'] - 1)
         df_higher_than_avg['Bet Size'] = bankroll * df_higher_than_avg['Bankroll%']
         df_higher_than_avg['Bet Size'] = df_higher_than_avg['Bet Size'].apply(lambda x: round(x, -1))
 
-        df_higher_than_avg['EV'] = df_higher_than_avg['Bet Size'] * df_higher_than_avg['ROI%']
+        df_higher_than_avg['Positive EV'] = df_higher_than_avg['Bet Size'] * df_higher_than_avg['ROI%']
+        df_higher_than_avg['Total Bet EV'] = df_higher_than_avg['Bet Size'] * df_higher_than_avg['sharp_probability'] * df_higher_than_avg['outcome_price']
 
         return df_higher_than_avg
 

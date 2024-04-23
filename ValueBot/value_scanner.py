@@ -44,7 +44,7 @@ def main():
                   'soccer_spl',
                   'soccer_sweden_allsvenskan',
                   'soccer_sweden_superettan',
-                #   'soccer_switzerland_superleague',
+                  'soccer_switzerland_superleague',
                   'soccer_turkey_super_league',
                   'soccer_uefa_europa_conference_league',
                   'soccer_uefa_champs_league',
