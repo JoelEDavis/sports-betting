@@ -2,6 +2,7 @@ import pandas as pd
 import os
 from utils import OddsAPI, OddsDataProcessor, ValueCalculator
 from dotenv import load_dotenv
+from datetime import datetime
 
 load_dotenv()
 api_key = os.getenv("KEY")
@@ -70,32 +71,42 @@ def main():
                         'unibet_uk',
                         'virginbet',
                         'williamhill']
+                        
+    historical = False
 
-    date = '2024-01-20T00:00:00Z'
-    historical = True
+    if historical:
+        scan_start_date = '2024-01-16'
+        scan_end_date = '2024-02-28'  # Define your end date
+    else:
+        scan_start_date = scan_end_date = datetime.now().strftime('%Y-%m-%d')
     
     bankroll = 1000
+    ev_threshold = 5.0
 
     value_opportunities = []
 
-    for sport_key in sport_keys:
-        try:
-            odds_api = OddsAPI(api_key, region, market, sport_key, date=date, historical=historical)
-            odds_data = odds_api.call_api()
+    for single_date in pd.date_range(scan_start_date, scan_end_date):
+        date = single_date.strftime('%Y-%m-%dT00:00:00Z')
+        for sport_key in sport_keys:
+            try:
+                odds_api = OddsAPI(api_key, region, market, sport_key, date=date, historical=historical)
+                odds_data = odds_api.call_api()
 
-            df = OddsDataProcessor.process_data(odds_data)
+                df = OddsDataProcessor.process_data(odds_data)
 
-            sharp_bookmakers = ['pinnacle']
-            df_value = ValueCalculator.calculate_value(df, bankroll, sharp_bookmakers, valid_bookmakers)
+                sharp_bookmakers = ['pinnacle']
+                df_value = ValueCalculator.calculate_value(df, bankroll, sharp_bookmakers, valid_bookmakers)
 
-            value_opportunities.append(df_value)
+                value_opportunities.append(df_value)
 
-        except Exception as e:
-            print(f"Skipping {sport_key} due to error: {str(e)}")
-            continue
+            except Exception as e:
+                print(f"Skipping {sport_key} due to error: {str(e)}")
+                continue
 
     if value_opportunities:
         all_value_opportunities = pd.concat(value_opportunities)
+        all_value_opportunities = all_value_opportunities[all_value_opportunities['Positive EV'] > ev_threshold]
+        all_value_opportunities = all_value_opportunities.sort_values(by='Positive EV', ascending=False).drop_duplicates(subset='game_id')
         all_value_opportunities.to_csv("All_Value_Opportunities.csv", index=False)
 
 if __name__ == "__main__":
