@@ -71,13 +71,16 @@ def main():
                         'virginbet',
                         'williamhill']
 
+    date = '2024-01-20T00:00:00Z'
+    historical = True
+    
     bankroll = 1000
 
     value_opportunities = []
 
     for sport_key in sport_keys:
         try:
-            odds_api = OddsAPI(api_key, region, market, sport_key)
+            odds_api = OddsAPI(api_key, region, market, sport_key, date=date, historical=historical)
             odds_data = odds_api.call_api()
 
             df = OddsDataProcessor.process_data(odds_data)

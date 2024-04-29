@@ -2,48 +2,144 @@ import pandas as pd
 import requests
 
 class OddsAPI:
-    def __init__(self, api_key, region, market, sport_key):
+    def __init__(self, api_key, region, market, sport_key, date=None, historical=False):
         self.api_key = api_key
         self.region = region
         self.market = market
         self.sport_key = sport_key
+        self.date = date
+        self.historical = historical
 
     def call_api(self):
-        url = f'https://api.the-odds-api.com/v4/sports/{self.sport_key}/odds/?apiKey={self.api_key}&regions={self.region}&market={self.market}'
+        if self.historical:
+            url = f'https://api.the-odds-api.com/v4/historical/sports/{self.sport_key}/odds/?apiKey={self.api_key}&regions={self.region}&market={self.market}&date={self.date}'
+        else:
+            url = f'https://api.the-odds-api.com/v4/sports/{self.sport_key}/odds/?apiKey={self.api_key}&regions={self.region}&market={self.market}'
+        
         odds_response = requests.get(url)
         odds_data = odds_response.json()
         print('Remaining requests', odds_response.headers['x-requests-remaining'])
         print('Used requests', odds_response.headers['x-requests-used'])
         return odds_data
 
+# class OddsDataProcessor:
+#     @staticmethod
+#     def process_current_data(odds_data):
+#         rows_list = []
+#         for game in odds_data:
+#             for bookmaker in game['bookmakers']:
+#                 for market_ in bookmaker['markets']:
+#                     for outcome in market_['outcomes']:
+#                         row = {
+#                             'game_id': game['id'],
+#                             'sport_key': game['sport_key'],
+#                             'sport_title': game['sport_title'],
+#                             'home_team': game['home_team'],
+#                             'away_team': game['away_team'],
+#                             'commence_time': game['commence_time'],
+#                             'bookmaker_key': bookmaker['key'],
+#                             'bookmaker_title': bookmaker['title'],
+#                             'bookmaker_last_update': bookmaker['last_update'],
+#                             'market_key': market_['key'],
+#                             'market_last_update': market_['last_update'],
+#                             'outcome_name': outcome['name'],
+#                             'outcome_price': outcome['price']
+#                         }
+#                         rows_list.append(row)
+#         return pd.DataFrame(rows_list)
 
+#     @staticmethod
+#     def process_historical_data(odds_data):
+#         rows_list = []
+#         for game in odds_data:
+#             for bookmaker in game['sites']:
+#                 for outcome in bookmaker['odds']['h2h']:
+#                     row = {
+#                         'game_id': game['id'],
+#                         'sport_key': game['sport_key'],
+#                         'sport_title': game['sport_title'],
+#                         'home_team': game['home_team'],
+#                         'away_team': game['away_team'],
+#                         'commence_time': game['commence_time'],
+#                         'bookmaker_key': bookmaker['site_key'],
+#                         'bookmaker_title': bookmaker['site_nice'],
+#                         'bookmaker_last_update': bookmaker['last_update'],
+#                         'outcome_name': outcome['team'],
+#                         'outcome_price': outcome['odds']
+#                     }
+#                     rows_list.append(row)
+#         return pd.DataFrame(rows_list)
+
+#     @staticmethod
+#     def process_data(odds_data, historical=False):
+#         """
+#         Process data from either the current or historical endpoint.
+#         """
+#         if historical:
+#             return OddsDataProcessor.process_historical_data(odds_data)
+#         else:
+#             return OddsDataProcessor.process_current_data(odds_data)
+
+# class OddsDataProcessor:
+#     @staticmethod
+#     def process_data(odds_data):
+#         rows_list = []
+#         for game in odds_data:
+#             for bookmaker in game['bookmakers']:
+#                 for market_ in bookmaker['markets']:
+#                     for outcome in market_['outcomes']:
+#                         row = {
+#                             'game_id': game['id'],
+#                             'sport_key': game['sport_key'],
+#                             'sport_title': game['sport_title'],
+#                             'home_team': game['home_team'],
+#                             'away_team': game['away_team'],
+#                             'commence_time': game['commence_time'],
+#                             'bookmaker_key': bookmaker['key'],
+#                             'bookmaker_title': bookmaker['title'],
+#                             'bookmaker_last_update': bookmaker['last_update'],
+#                             'market_key': market_['key'],
+#                             'market_last_update': market_['last_update'],
+#                             'outcome_name': outcome['name'],
+#                             'outcome_price': outcome['price']
+#                         }
+#                         rows_list.append(row)
+#         return pd.DataFrame(rows_list)
+    
 class OddsDataProcessor:
     @staticmethod
     def process_data(odds_data):
+        if isinstance(odds_data, list):  # Check if it's the current version
+            data = odds_data
+        elif isinstance(odds_data, dict) and 'data' in odds_data:  # Check if it's the historical version
+            data = odds_data['data']
+        else:
+            raise ValueError("Invalid odds_data format")
+
         rows_list = []
-        for game in odds_data:
-            for bookmaker in game['bookmakers']:
-                for market_ in bookmaker['markets']:
-                    for outcome in market_['outcomes']:
-                        row = {
-                            'game_id': game['id'],
-                            'sport_key': game['sport_key'],
-                            'sport_title': game['sport_title'],
-                            'home_team': game['home_team'],
-                            'away_team': game['away_team'],
-                            'commence_time': game['commence_time'],
-                            'bookmaker_key': bookmaker['key'],
-                            'bookmaker_title': bookmaker['title'],
-                            'bookmaker_last_update': bookmaker['last_update'],
-                            'market_key': market_['key'],
-                            'market_last_update': market_['last_update'],
-                            'outcome_name': outcome['name'],
-                            'outcome_price': outcome['price']
-                        }
-                        rows_list.append(row)
+        for game in data:
+            if 'bookmakers' in game:  # Ensure the structure is consistent
+                for bookmaker in game['bookmakers']:
+                    for market_ in bookmaker.get('markets', []):  # Use .get() to handle missing 'markets'
+                        for outcome in market_.get('outcomes', []):  # Use .get() to handle missing 'outcomes'
+                            row = {
+                                'game_id': game.get('id', ''),
+                                'sport_key': game.get('sport_key', ''),
+                                'sport_title': game.get('sport_title', ''),
+                                'home_team': game.get('home_team', ''),
+                                'away_team': game.get('away_team', ''),
+                                'commence_time': game.get('commence_time', ''),
+                                'bookmaker_key': bookmaker.get('key', ''),
+                                'bookmaker_title': bookmaker.get('title', ''),
+                                'bookmaker_last_update': bookmaker.get('last_update', ''),
+                                'market_key': market_.get('key', ''),
+                                'market_last_update': market_.get('last_update', ''),
+                                'outcome_name': outcome.get('name', ''),
+                                'outcome_price': outcome.get('price', '')
+                            }
+                            rows_list.append(row)
         return pd.DataFrame(rows_list)
-    
-    
+
 class ValueCalculator:
     @staticmethod
     def calculate_value(df, bankroll, sharp_bookmakers, valid_bookmakers):
