@@ -15,7 +15,7 @@ class OddsAPI:
             url = f'https://api.the-odds-api.com/v4/historical/sports/{self.sport_key}/odds/?apiKey={self.api_key}&regions={self.region}&market={self.market}&date={self.date}'
         else:
             url = f'https://api.the-odds-api.com/v4/sports/{self.sport_key}/odds/?apiKey={self.api_key}&regions={self.region}&market={self.market}'
-        
+
         odds_response = requests.get(url)
         odds_data = odds_response.json()
         print('Remaining requests', odds_response.headers['x-requests-remaining'])
@@ -64,19 +64,23 @@ class ValueCalculator:
         
         # Calculate the average odds for each outcome from sharp bookmakers
         avg_sharp_odds = df_sharp.groupby(['game_id', 'outcome_name'])['outcome_price'].mean()
-        avg_sharp_odds = avg_sharp_odds.reset_index().rename(columns={'outcome_price': 'avg_sharp_price'})
+
+        ## Implementing 'Margin Proportional to Odds' model from https://www.football-data.co.uk/The_Wisdom_of_the_Crowd_updated.pdf
+        ## M = 0.45 (average margin from Pinnacle)
+        fair_sharp_odds = (avg_sharp_odds * 3) / (3 - (0.045 * avg_sharp_odds))
+        fair_sharp_odds = fair_sharp_odds.reset_index().rename(columns={'outcome_price': 'fair_sharp_price'})
         
         # Filter out exchange markets
         df_valid = df[df['bookmaker_key'].isin(valid_bookmakers)]
         
         # Find the odds from all bookmakers higher than the average sharp odds
-        df_higher_than_avg = df_valid.merge(avg_sharp_odds, on=['game_id', 'outcome_name'])
-        df_higher_than_avg = df_higher_than_avg[df_higher_than_avg['outcome_price'] > df_higher_than_avg['avg_sharp_price']]
+        df_higher_than_avg = df_valid.merge(fair_sharp_odds, on=['game_id', 'outcome_name'])
+        df_higher_than_avg = df_higher_than_avg[df_higher_than_avg['outcome_price'] > df_higher_than_avg['fair_sharp_price']]
         
         # Calculate win probability based on odds provided and establish the price difference between sharp and soft bookmakers
         df_higher_than_avg['win_probability'] = 1 / df_higher_than_avg['outcome_price']
-        df_higher_than_avg['sharp_probability'] = 1 / df_higher_than_avg['avg_sharp_price']
-        df_higher_than_avg['price_difference'] = df_higher_than_avg['outcome_price'] - df_higher_than_avg['avg_sharp_price']
+        df_higher_than_avg['sharp_probability'] = 1 / df_higher_than_avg['fair_sharp_price']
+        df_higher_than_avg['price_difference'] = df_higher_than_avg['outcome_price'] - df_higher_than_avg['fair_sharp_price']
         
         # Calculate ROI for each outcome
         df_higher_than_avg['ROI%'] = (((df_higher_than_avg['outcome_price'] - 1) * df_higher_than_avg['sharp_probability']) - (1 - df_higher_than_avg['sharp_probability']))
@@ -105,3 +109,32 @@ class ArbitrageCalculator:
         df_arb['ror'] = (1 - df_arb['sum_impl_prob'])
         df_arb['profit'] = stake * df_arb['ror']
         return df_arb
+    
+class DevigCalculator:
+    @staticmethod
+    def calculate_vig(df):
+        # Calculate the probability for each outcome
+        df['probability'] = 1 / df['outcome_price']
+        
+        # Assign 'home', 'away', or 'draw' to 'bet_type' based on 'outcome_name'
+        df['bet_type'] = df.apply(lambda row: 'home' if row['outcome_name'] == row['home_team'] else (
+                                         'away' if row['outcome_name'] == row['away_team'] else 'draw'), axis=1)
+        
+        # Calculate the total probability for each event
+        df['total_probability'] = df.groupby(['game_id'])['probability'].transform('sum')
+
+        # Count the number of events for each bookmaker
+        bookmaker_counts = df.groupby('bookmaker_key').size().rename('event_count')
+
+        # Calculate average margin added by each bookmaker
+        df['margin'] = df['total_probability'] - 1  # Calculate margin for each outcome
+        average_margin = df.groupby('bookmaker_key')['margin'].mean().rename('average_margin')
+
+        # Get unique bookmaker titles
+        bookmaker_titles = df.groupby('bookmaker_key')['bookmaker_title'].first()
+        sports_keys = df.groupby('bookmaker_key')['sport_key'].first()
+
+        # Create a DataFrame for results
+        result_df = pd.DataFrame({'bookmaker_title': bookmaker_titles, 'sport_key': sports_keys, 'average_margin': average_margin, 'event_count': bookmaker_counts})
+        
+        return result_df
